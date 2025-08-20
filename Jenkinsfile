@@ -51,7 +51,7 @@ pipeline {
             steps {
                 script {
                     // Replace 'sonarqube-server' with your Jenkins SonarQube server name
-                    withSonarQubeEnv('sonar-scan') {
+                    withSonarQubeEnv('sonar') {
                         sh "mvn sonar:sonar"
                     }
                 }
