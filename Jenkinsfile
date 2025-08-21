@@ -10,6 +10,7 @@ pipeline {
         APP_NAME = "register-app-pipeline"
         RELEASE = "1.0.0"
         // DOCKER_USER and DOCKER_PASS will be injected via withCredentials
+        JENKINS_API_TOKEN = credentials("JENKINS_API_TOKEN")
     }
 
     stages {
