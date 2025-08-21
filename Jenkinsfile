@@ -62,22 +62,23 @@ pipeline {
             }
         }
 
-        stage("Build & Push Docker Image") {
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                        def IMAGE_NAME = "${DOCKER_USER}/${APP_NAME}"
-                        def IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
+   stage("Build & Push Docker Image") {
+    steps {
+        script {
+            withCredentials([usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                def IMAGE_NAME = "${DOCKER_USER}/${APP_NAME}"
+                env.IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"   // ✅ Global bana diya
 
-                        def docker_image = docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
-                        docker.withRegistry('https://index.docker.io/v1/', 'docker-cred') {
-                            docker_image.push("${IMAGE_TAG}")
-                            docker_image.push('latest')
-                        }
-                    }
+                def docker_image = docker.build("${IMAGE_NAME}:${env.IMAGE_TAG}")
+                docker.withRegistry('https://index.docker.io/v1/', 'docker-cred') {
+                    docker_image.push("${env.IMAGE_TAG}")
+                    docker_image.push('latest')
                 }
             }
         }
+    }
+}
+
 
         stage("Trivy Scan") {
             steps {
@@ -110,13 +111,21 @@ pipeline {
             }
         }
 
-      stage("Trigger CD Pipeline") {
-            steps {
-                script {
-                     sh "curl -v -k --user clouduser:${JENKINS_API_TOKEN} -X POST -H 'cache-control: no-cache' -H 'content-type: application/x-www-form-urlencoded' --data 'IMAGE_TAG=${IMAGE_TAG}' 'ec2-3-110-77-94.ap-south-1.compute.amazonaws.com:8080/job/gitops-register-app/buildWithParameters?token=gitops-token'"
-                }
-            }
-       }
+    stage("Trigger CD Pipeline") {
+    steps {
+        script {
+            sh """
+            curl -v -k --user clouduser:${JENKINS_API_TOKEN} \
+            -X POST \
+            -H 'cache-control: no-cache' \
+            -H 'content-type: application/x-www-form-urlencoded' \
+            --data 'IMAGE_TAG=${env.IMAGE_TAG}' \
+            'http://ec2-3-110-77-94.ap-south-1.compute.amazonaws.com:8080/job/gitops-register-app/buildWithParameters?token=gitops-token'
+            """
+        }
+    }
+}
+
     }
 
     } // end of stages
