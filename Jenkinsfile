@@ -52,7 +52,7 @@ pipeline {
                 script {
                     // Replace 'sonarqube-server' with your Jenkins SonarQube server name
                     withSonarQubeEnv('sonar') {
-                        sh "mvn clean verify sonar:sonar -Dsonar.projectKey=register-app -Dsonar.host.url=http://13.233.212.228:9000"
+                        sh "mvn clean verify sonar:sonar -Dsonar.projectKey=register-app -Dsonar.host.url=http://15.206.123.100:9000"
                     }
                 }
             }
