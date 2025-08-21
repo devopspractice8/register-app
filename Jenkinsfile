@@ -112,23 +112,18 @@ pipeline {
         }
 
       stage("Trigger CD Pipeline") {
-        steps {
-            script {
-                // fetch CSRF crumb
-                sh """
-                CRUMB=\$(curl -s -u clouduser:${JENKINS_API_TOKEN} \
-                  http://ec2-3-110-77-94.ap-south-1.compute.amazonaws.com:8080/crumbIssuer/api/json \
-                  | jq -r .crumb)
-
-                curl -v -k -u clouduser:${JENKINS_API_TOKEN} \
-                  -H "Jenkins-Crumb:\$CRUMB" \
-                  -X POST \
-                  --data IMAGE_TAG=${env.IMAGE_TAG} \
-                  http://ec2-3-110-77-94.ap-south-1.compute.amazonaws.com:8080/job/gitops-register-app/buildWithParameters
-                """
-            }
+    steps {
+        script {
+            sh """
+            curl -v -k -u clouduser:${JENKINS_API_TOKEN} \
+              -X POST \
+              --data IMAGE_TAG=${env.IMAGE_TAG} \
+              http://ec2-3-110-77-94.ap-south-1.compute.amazonaws.com:8080/job/gitops-register-app/buildWithParameters
+            """
         }
     }
+}
+
 
 
     }
