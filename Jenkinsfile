@@ -65,21 +65,20 @@ pipeline {
             }
         }
 
-        stage("Build & Push Docker Image") {
-            steps {
-                script {
-                    withCredentials([
-                        usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
-                    ]) {
-                        docker_image = docker.build("${DOCKER_USER}/${APP_NAME}")
-                        docker.withRegistry('', "${DOCKER_PASS}") {
-                            docker_image.push("${IMAGE_TAG}")
-                            docker_image.push('latest')
-                        }
-                    }
+    stage("Build & Push Docker Image") {
+    steps {
+        script {
+            withCredentials([usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                def docker_image = docker.build("${DOCKER_USER}/${APP_NAME}")
+                docker.withRegistry('https://index.docker.io/v1/', 'docker-cred') {
+                    docker_image.push("${IMAGE_TAG}")
+                    docker_image.push('latest')
                 }
             }
         }
+    }
+}
+
 
         stage("Trivy Scan") {
             steps {
