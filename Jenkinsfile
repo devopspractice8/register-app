@@ -110,25 +110,14 @@ pipeline {
             }
         }
 
-        stage("Trigger CD Pipeline") {
+      stage("Trigger CD Pipeline") {
             steps {
                 script {
-                    withCredentials([string(credentialsId: 'JENKINS_API_TOKEN', variable: 'JENKINS_API_TOKEN'),
-                                     usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                        def IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
-
-                        sh """
-                        curl -v -k --user clouduser:${JENKINS_API_TOKEN} \
-                        -X POST \
-                        -H 'cache-control: no-cache' \
-                        -H 'content-type: application/x-www-form-urlencoded' \
-                        --data 'IMAGE_TAG=${IMAGE_TAG}' \
-                        'http://ec2-3-110-77-94.ap-south-1.compute.amazonaws.com:8080/job/gitops-register-app/buildWithParameters?token=gitops-token'
-                        """
-                    }
+                     sh "curl -v -k --user clouduser:${JENKINS_API_TOKEN} -X POST -H 'cache-control: no-cache' -H 'content-type: application/x-www-form-urlencoded' --data 'IMAGE_TAG=${IMAGE_TAG}' 'ec2-3-110-77-94.ap-south-1.compute.amazonaws.com:8080/job/gitops-register-app/buildWithParameters?token=gitops-token'"
                 }
             }
-        }
+       }
+    }
 
     } // end of stages
 
