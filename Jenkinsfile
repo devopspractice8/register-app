@@ -2,15 +2,13 @@ pipeline {
     agent any
 
     tools {
-        jdk 'jdk17'          // Make sure this matches your Jenkins JDK name
-        maven 'maven3'       // Make sure this matches your Jenkins Maven name
+        jdk 'jdk17'
+        maven 'maven3'
     }
 
     environment {
         APP_NAME = "register-app-pipeline"
         RELEASE = "1.0.0"
-        // DOCKER_USER and DOCKER_PASS will be injected via withCredentials
-        JENKINS_API_TOKEN = credentials("JENKINS_API_TOKEN")
     }
 
     stages {
@@ -62,37 +60,34 @@ pipeline {
             }
         }
 
-   stage("Build & Push Docker Image") {
-    steps {
-        script {
-            withCredentials([usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                def IMAGE_NAME = "${DOCKER_USER}/${APP_NAME}"
-                env.IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"   // ✅ Global bana diya
-
-                def docker_image = docker.build("${IMAGE_NAME}:${env.IMAGE_TAG}")
-                docker.withRegistry('https://index.docker.io/v1/', 'docker-cred') {
-                    docker_image.push("${env.IMAGE_TAG}")
-                    docker_image.push('latest')
-                }
-            }
-        }
-    }
-}
-
-
-        stage("Trivy Scan") {
+        stage("Build & Push Docker Image") {
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         def IMAGE_NAME = "${DOCKER_USER}/${APP_NAME}"
-                        def IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
+                        env.IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
 
-                        sh """
-                          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-                          aquasec/trivy image ${IMAGE_NAME}:${IMAGE_TAG} \
-                          --no-progress --scanners vuln --exit-code 0 --severity HIGH,CRITICAL --format table
-                        """
+                        def docker_image = docker.build("${IMAGE_NAME}:${env.IMAGE_TAG}")
+                        docker.withRegistry('https://index.docker.io/v1/', 'docker-cred') {
+                            docker_image.push("${env.IMAGE_TAG}")
+                            docker_image.push('latest')
+                        }
                     }
+                }
+            }
+        }
+
+        stage("Trivy Scan") {
+            steps {
+                script {
+                    def IMAGE_NAME = "devops640/${APP_NAME}"
+                    def IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
+
+                    sh """
+                      docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                      aquasec/trivy image ${IMAGE_NAME}:${IMAGE_TAG} \
+                      --no-progress --scanners vuln --exit-code 0 --severity HIGH,CRITICAL --format table
+                    """
                 }
             }
         }
@@ -100,40 +95,30 @@ pipeline {
         stage("Cleanup Artifacts") {
             steps {
                 script {
-                    withCredentials([usernamePassword(credentialsId: 'docker-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                        def IMAGE_NAME = "${DOCKER_USER}/${APP_NAME}"
-                        def IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
+                    def IMAGE_NAME = "devops640/${APP_NAME}"
+                    def IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
 
-                        sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
-                        sh "docker rmi ${IMAGE_NAME}:latest || true"
-                    }
+                    sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
+                    sh "docker rmi ${IMAGE_NAME}:latest || true"
                 }
             }
         }
 
-      stage("Trigger CD Pipeline") {
-    steps {
-        script {
-            withCredentials([string(credentialsId: 'JENKINS_API_TOKEN', variable: 'API_TOKEN')]) {
-                sh '''
-                curl -v -k --user clouduser:$API_TOKEN \
-                -X POST \
-                -H "cache-control: no-cache" \
-                -H "content-type: application/x-www-form-urlencoded" \
-                --data "IMAGE_TAG=${IMAGE_TAG}" \
-                "http://ec2-3-110-77-94.ap-south-1.compute.amazonaws.com:8080/job/gitops-register-app/buildWithParameters?token=gitops-token"
-                '''
+        stage("Trigger CD Pipeline") {
+            steps {
+                script {
+                    withCredentials([string(credentialsId: 'JENKINS_API_TOKEN', variable: 'API_TOKEN')]) {
+                        sh '''
+                        curl -X POST \
+                          "http://clouduser:$API_TOKEN@ec2-3-110-77-94.ap-south-1.compute.amazonaws.com:8080/job/gitops-register-app/buildWithParameters" \
+                          --data-urlencode IMAGE_TAG=${IMAGE_TAG} \
+                          --data token=gitops-token
+                        '''
+                    }
+                }
             }
         }
     }
-}
-
-
-
-
-    }
-
-    } // end of stages
 
     post {
         failure {
@@ -148,5 +133,5 @@ pipeline {
                      mimeType: 'text/html',
                      to: "taufikhshaikh5@gmail.com"
         }
-    
+    }
 }
